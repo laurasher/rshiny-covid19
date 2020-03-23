@@ -1,0 +1,10 @@
+name: r_app
+title:
+username:
+account: lasher
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1982617
+bundleId: 2913911
+url: https://lasher.shinyapps.io/r_app/
+when: 1584984358.64476

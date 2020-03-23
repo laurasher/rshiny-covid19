@@ -1,0 +1,133 @@
+---
+title: "COVID-19 Dashboard"
+author: "JHU/APL"
+runtime: shiny
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+---
+
+```{r setup, include=FALSE}
+
+library(shiny)
+library(leaflet) # devtools::install_github('rstudio/leaflet')
+library(highcharter) # devtools::install_github('jbkunst/highcharter')
+library(plotly) # devtools::install_github('ropensci/plotly')
+library(ggplot2) # devtools::install_github('hadley/ggplot2')
+library(sp)
+library(dplyr)
+library(flexdashboard) # devtools::install_github('rstudio/flexdashboard')
+library(rgeos)
+library(mapproj)
+library(maptools)
+library(readr)
+library(ggthemes)
+library(RCurl)
+```
+
+
+```{r global, include=FALSE}
+confirmed <- read.csv(text=getURL("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv"))
+confirmed$type <- 'confirmed'
+confirmed$plotColor <- 'orange'
+
+deaths <- read.csv(text=getURL("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv"))
+deaths$type <- 'deaths'
+deaths$plotColor <- 'red'
+
+recovered <- read.csv(text=getURL("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Recovered.csv"))
+recovered$plotColor <- 'green'
+recovered$type <- 'recovered'
+
+combined <- rbind(confirmed, deaths, recovered)
+```
+
+
+Column {.sidebar}
+-------------------------------------
+```{r}
+
+numHeadCols = 4
+
+sliderInput("day", label = "Days since outbreak",
+            min = 1, max = ncol(combined)[1]-numHeadCols, value = ncol(combined)[1]-numHeadCols, step = 1,
+            animate = animationOptions(interval = 300, loop = FALSE))
+
+
+filteredData <- reactive({
+    #filt <- data.frame('lat'=confirmed$Lat,
+    #                  'lon'=confirmed$Long,
+    #                 'day'=confirmed %>% select(colnames(confirmed)[1 + numHeadCols]) %>% pull())
+    #filt <- filt %>% filter(day>0)
+    #filt <- combined
+    data.frame(
+      'lat' = combined$Lat,
+      'lon' = combined$Long,
+      'caseCnt'= combined %>% select(colnames(combined)[input$day + numHeadCols]) %>% pull(),
+      'type' = combined$type,
+      'plotColor' = combined$plotColor
+    )
+  })
+
+leafletOutput('map')
+
+  # static backround map
+  output$map <- renderLeaflet({
+    leaflet(data.frame(
+      'lat' = combined$Lat,
+      'lon' = combined$Long,
+      'caseCnt'= combined %>% select(colnames(combined)[1]) %>% pull(),
+      'type' = combined$type,
+      'plotColor' = combined$plotColor
+    )) %>%
+      addTiles() %>%
+      fitBounds(~min(lon), ~min(lat), ~max(lon), ~max(lat))
+  })  
+  
+  # reactive circles map
+  observe({
+    leafletProxy("map", data = filteredData()) %>%
+      clearShapes() %>%
+      addMarkers(lng=~lon,
+                 lat=~lat,
+                 color = ~(plotColor))
+  })
+```
+
+
+Row 
+-------------------------------------
+    
+### Map
+    
+```{r}
+
+#output$map <- renderLeaflet({
+#  map <- leaflet() %>%
+#      addProviderTiles(providers$CartoDB.Positron) %>%
+#      addCircleMarkers(data=filteredData(),
+#        radius = ~2*(log10(as.numeric(caseCnt))),
+#        stroke = FALSE,
+#        #fillOpacity = ~(caseCnt)*.5,
+#        fillOpacity = 0.5,
+#        color = ~(plotColor))
+#  map
+#})
+
+#leafletOutput('map')
+```
+
+
+   
+Row {.tabset .tabset-fade}
+-------------------------------------
+   
+### Chart 2
+
+```{r}
+```   
+ 
+### Chart 3
+    
+```{r}
+```
