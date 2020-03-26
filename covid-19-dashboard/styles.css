@@ -11,43 +11,49 @@ div.outer {
   overflow: hidden;
   padding: 0;
 }
-
-/* Customize fonts */
-body, label, input, button, select { 
+tr{
+  color: white;
+}
+th{
+  color: white;
+}
+#table{
+  height: 600px;
+  overflow: scroll;
+}
+#deaths_table{
+  width: 200px;
+  height: 300px;
+  overflow: scroll;
+  margin-bottom: 20px;
+}
+#recovered_table{
+  width: 200px;
+  height: 300px;
+  overflow: scroll;
+  margin-bottom: 20px;
+}
+.btn-default{
+  color: black;
+  background-color: white;
+  /*width: 140px !important;*/
+  font-size: 12px;
+}
+.slider-animate-container{
+  display: none;
+}
+.control-label{
+  display: none;
+}
+.irs.js-irs-0.irs-with-grid{
+  display: none;
+}
+body, label, input, button, select {
+  color:  white;
+  background-color: #090909;
+  margin-top: 2%;
   font-family: 'Helvetica Neue', Helvetica;
   font-weight: 200;
 }
+
 h1, h2, h3, h4 { font-weight: 400; }
-
-#controls {
-  /* Appearance */
-  background-color: white;
-  padding: 0 10px 10px 10px;
-  cursor: move;
-  /* Fade out while not hovering */
-  opacity: 0.9;
-  /*zoom: 0.9;*/
-  /*transition: opacity 500ms 1s;*/
-}
-
-#controls:hover {
-  /* Fade in while hovering */
-  /*opacity: 0.5;
-  transition-delay: 0;*/
-}
-
-#logo {
-  /* Appearance */
-  background-color: transparent;
-  cursor: move;
-  /* Fade out while not hovering */
-  opacity: 0.25;
-  zoom: 0.9;
-  transition: opacity 500ms 1s;
-}
-
-#logo:hover {
-  /* Fade in while hovering */
-  opacity: 0.95;
-  transition-delay: 0;
-}

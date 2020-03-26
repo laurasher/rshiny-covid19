@@ -5,6 +5,6 @@ account: lasher
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1982617
-bundleId: 2927482
+bundleId: 2928440
 url: https://lasher.shinyapps.io/r_app/
-when: 1585231259.425
+when: 1585245384.69228
