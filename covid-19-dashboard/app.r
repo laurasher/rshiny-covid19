@@ -156,6 +156,7 @@ server <- function(input, output, session) {
   output$table <- DT::renderDataTable(
     DT::datatable(
       grouped_by_country,
+      selection = 'single',
       options = list(
         order = list(2, 'desc'),
         searching = FALSE,
@@ -238,6 +239,11 @@ server <- function(input, output, session) {
       print(cur_country_lon)
       zoom = 5
     }
+    content <- paste(sep = "<br/>",
+                     "<b><a href='http://www.samurainoodle.com'>Samurai Noodle</a></b>",
+                     "606 5th Ave. S",
+                     "Seattle, WA 98138"
+    )
     leafletProxy("COVID19", data = filteredData()) %>%
       clearShapes() %>% clearMarkers() %>%
       addCircleMarkers(data=filteredData(),
@@ -245,9 +251,9 @@ server <- function(input, output, session) {
                        #stroke = ~plotColor,
                        stroke = FALSE,
                        fillOpacity = covid_alpha,
-                       color = ~plotColor)  %>% setView(lng = cur_country_lon, 
-                                                        lat = cur_country_lat, 
-                                                        zoom = zoom)
+                       color = ~plotColor,
+                       label = ~lapply(as.list(caseCnt), HTML))  %>% 
+      setView(lng = cur_country_lon, lat = cur_country_lat, zoom = zoom)
   })
 }
 
