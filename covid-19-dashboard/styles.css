@@ -12,19 +12,20 @@ div.outer {
   padding: 0;
 }
 tr{
-  color: white;
+  color: black;
 }
 th{
-  color: white;
+  color: black;
 }
 #table{
   height: 600px;
-  overflow: scroll;
+  overflow-y: scroll;
+  overflow-x: hidden; 
 }
 #deaths_table{
   width: 200px;
   height: 300px;
-  overflow: scroll;
+  overflow-y: scroll;
   margin-bottom: 20px;
 }
 #recovered_table{
@@ -49,9 +50,11 @@ th{
   display: none;
 }
 body, label, input, button, select {
-  color:  white;
-  background-color: #090909;
+  color:  black;
+  /*background-color: #090909;*/
+  background-color : white;
   margin-top: 2%;
+  margin-left: 2%;
   font-family: 'Helvetica Neue', Helvetica;
   font-weight: 200;
 }

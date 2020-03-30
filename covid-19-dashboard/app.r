@@ -15,7 +15,7 @@ library(shinydashboard)
 library(rsconnect)
 if(!require(shinythemes)) install.packages("shinythemes", repos = "http://cran.us.r-project.org")
 if(!require(shinyWidgets)) install.packages("shinyWidgets", repos = "http://cran.us.r-project.org")
-
+library(DT) # if (!require("DT")) install.packages('DT')
 
 # Case data
 numHeadCols = 4
@@ -26,12 +26,19 @@ deaths_col = "#cc4c02"
 covid_col = "#a20f0f"
 recovered_col = "#70a801"
 
+geocode <- read_csv('countries_csv.csv')
+
 confirmed <- as.data.frame(data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/archived_data/archived_time_series/time_series_19-covid-Confirmed_archived_0325.csv"))
 #confirmed <- confirmed[,1:ncol(confirmed)-1]
 confirmed$type <- 'confirmed'
 confirmed$plotColor <- covid_col
+grouped_by_country <- confirmed %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
+grouped_by_country <- data.frame("Country"= grouped_by_country$`Country/Region`, "Confirmed" = grouped_by_country[ncol(grouped_by_country)] %>% pull())
+grouped_by_country[order(-grouped_by_country$Confirmed),]
 
 deaths <- as.data.frame(data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/archived_data/archived_time_series/time_series_19-covid-Deaths_archived_0325.csv"))
+grouped_by_country_deaths <- deaths %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
+grouped_by_country_deaths <- data.frame("Country"= grouped_by_country_deaths$`Country/Region`, "Deaths" = grouped_by_country_deaths[ncol(grouped_by_country_deaths)] %>% pull())
 #deaths <- deaths[,1:ncol(deaths)-1]
 deaths$type <- 'deaths'
 deaths$plotColor <- deaths_col
@@ -46,13 +53,14 @@ combined <- rbind(confirmed, deaths, recovered)
 cases <- as.data.frame(data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/web-data/archived_data/data/cases.csv"))
 
 ui <- fluidPage(
+  span(p("COVID-19 Tracker", align = "left", style="margin-bottom:2%"), style="font-weight:500;font-size:36px;text-align:center;color:black;"),
   fluidRow(tags$head(includeCSS("styles.css")),
            tags$head(tags$style(".leaflet-control-zoom { display: none; }")),
            tags$head(tags$style(".leaflet-control-attribution { display: none; }")),
       column(2,
-             span(p("Total Confirmed", align = "center"), style="font-size:20px;text-align:center;color:white"),
-             span(p(textOutput("reactive_case_count"), align = "center"), style="font-weight:500;font-size:48px;color:#e60000;text-align:center;"),
-             tableOutput('table'),
+             span(p("Total Confirmed", align = "center"), style="font-size:20px;text-align:center;color:black"),
+             span(p(textOutput("reactive_case_count"), align = "center"), style="font-weight:500;font-size:36px;color:#e60000;text-align:center;"),
+             DT::dataTableOutput('table'),
              #plotOutput("countPlot", height="430px", width="100%"),
              pickerInput("outcome_select", width="80%",
                          choices = c("Confirmed cases", "Deaths", "Recovered"), 
@@ -63,21 +71,21 @@ ui <- fluidPage(
                          animate = animationOptions(interval = 700, loop = FALSE))
       ),
       column(6,
-             leafletOutput("COVID19", height="800px")
+             leafletOutput("COVID19", height="750px")
       ),
       fluidRow(
         column(4,
           column(4,
-                 span(p("Total Deaths", align = "center"), style="font-size:20px;text-align:center;color:white"),
-                 span(p(textOutput("reactive_death_count"), align = "center"), style="font-weight:500;font-size:48px;text-align:center;color:white"),
+                 span(p("Total Deaths", align = "center"), style="font-size:20px;text-align:center;color:black"),
+                 span(p(textOutput("reactive_death_count"), align = "center"), style="font-weight:500;font-size:36px;text-align:center;color:black"),
                  tableOutput('deaths_table')),
           column(4,offset = 2,
-                 span(p("Total Recovered", align = "center"), style="font-size:20px;text-align:center;color:white"),
-                 span(p(textOutput("reactive_recovered_count"), align = "center"), style="font-weight:500;font-size:48px;text-align:center;color:#70a801"),
+                 span(p("Total Recovered", align = "center"), style="font-size:20px;text-align:center;color:black"),
+                 span(p(textOutput("reactive_recovered_count"), align = "center"), style="font-weight:500;font-size:36px;text-align:center;color:#70a801"),
                  tableOutput('recovered_table'))
           ),
-        column(4, span(p("Global confirmed cases", align = "left"), style="font-size:12px;text-align:center;color:white"),
-               plotOutput("epiCurve", height="430px", width="430px"),)
+        column(4, span(p("Cumulative Global Confirmed Cases", align = "left", style="margin-left:15px;"), style="font-size:14px;text-align:center;color:black;margin-left:15px;"),
+               span(plotOutput("epiCurve", height="300px", width="450px"), style="margin-left:15px;"))
       )
 ))
 
@@ -108,14 +116,15 @@ server <- function(input, output, session) {
   
   #static background map
   output$COVID19 <- renderLeaflet({
-    leaflet(data.frame(
+    init_map_df <- data.frame(
       'lat' = combined$Lat,
       'long' = combined$Long,
       'caseCnt'= combined %>% select(colnames(combined)[ncol(combined)[1]-2]) %>% pull(),
       'type' = combined$type,
       'plotColor' = combined$plotColor
-      )) %>%
-      addProviderTiles(providers$CartoDB.DarkMatter, options = providerTileOptions(noWrap = TRUE)) %>%
+    )
+    leaflet(init_map_df) %>%
+      addProviderTiles(providers$CartoDB.Positron, options = providerTileOptions(noWrap = TRUE)) %>%
       fitBounds(~min(long), ~min(lat), ~max(long), ~max(lat)) %>% setView(0, 0, zoom = 2.1) %>%
       addCircleMarkers(radius = ~3*(log10(as.numeric(caseCnt))),
                              stroke = FALSE,
@@ -127,7 +136,7 @@ server <- function(input, output, session) {
   output$countPlot <- renderPlot({
     grouped_combined <- filteredData()  %>% group_by(country) %>% summarise_if(is.numeric, sum)
     ggplot(data.frame(
-      'ountry' = grouped_combined$country,
+      'country' = grouped_combined$country,
       'caseCnt' = grouped_combined %>% select(colnames(grouped_combined)[length(colnames(grouped_combined))]) %>% pull()
     ),aes_string(x='country', y='caseCnt')) + 
       geom_bar(stat = "identity") + theme(axis.text.x=element_blank()) + theme_minimal() + coord_flip() + scale_y_log10() + labs(x = "", y = "")
@@ -137,18 +146,53 @@ server <- function(input, output, session) {
     ggplot(data = data.frame("date" = as.Date(colnames(confirmed[8:ncol(confirmed)-(numTailCols+1)]), format='%m/%d/%y'), 
                              "y" = data.frame(colSums(confirmed[8:ncol(confirmed)-(numTailCols+1)])) %>% pull() ), aes(x=date, y=y)) + 
       geom_line(colour="#ffaa00", size=1.0) +
-      geom_point(colour="#ffaa00", size=3, shape=21, fill="#ffaa00") + labs(x = "", y = "Cumulative confirmed cases") +
+      geom_point(colour="#ffaa00", size=3, shape=21, fill="#ffaa00") + labs(x = "", y = "") +
       theme_minimal() + theme(panel.grid.minor = element_blank(), 
                               panel.grid.major = element_blank(),
                               panel.background = element_blank(),
                               plot.background = element_blank()
       )}, bg="transparent")
   
-  output$table <- renderTable({
-    grouped_by_country <- confirmed %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
-    grouped_by_country <- data.frame("Country"= grouped_by_country$`Country/Region`, "Confirmed" = grouped_by_country[ncol(grouped_by_country)] %>% pull())
-    grouped_by_country[order(-grouped_by_country$Confirmed),]
-  })
+  output$table <- DT::renderDataTable(
+    DT::datatable(
+      grouped_by_country,
+      options = list(
+        order = list(2, 'desc'),
+        searching = FALSE,
+        lengthChange = FALSE,
+        pageLength = 12),
+      callback = JS("
+            var format = function(d) {
+              console.log(d)
+            };
+            table.on('click', 'td.details-control', function() {
+             console.log()
+            });")
+  ))
+  
+  #output$table <- renderTable({
+  #  grouped_by_country <- confirmed %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
+  #  grouped_by_country <- data.frame("Country"= grouped_by_country$`Country/Region`, "Confirmed" = grouped_by_country[ncol(grouped_by_country)] %>% pull())
+  #  grouped_by_country[order(-grouped_by_country$Confirmed),]
+  #})
+  
+  #output$deaths_table <- DT::renderDataTable(
+  #  DT::datatable(
+  #    grouped_by_country_deaths,
+  #    options = list(
+  #      order = list(2, 'desc'),
+  #      searching = FALSE,
+  #      lengthChange = FALSE,
+  #      pageLength = 6,
+  #      columnDefs = list(list(width = '10px'))),
+  #    callback = JS("
+  #          var format = function(d) {
+  #            console.log(d)
+  #          };
+  #          table.on('click', 'td.details-control', function() {
+  #           console.log()
+  #          });")
+  #  ))
   
   output$deaths_table <- renderTable({
     grouped_by_country <- deaths %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
@@ -177,6 +221,23 @@ server <- function(input, output, session) {
   })
   # reactive circles map
   observe({
+    s = input$table_rows_selected
+    #print(s[1])
+    tmp <- s[1]
+    print(tmp)
+    if (is.null(tmp)){
+      tmp = 1
+      cur_country_lat = 0
+      cur_country_lon = 0
+      zoom = 2.1
+    } else {
+      country_name <- grouped_by_country$Country[tmp]
+      cur_country_lat <- geocode %>% filter(name==country_name) %>% select(latitude) %>% pull()
+      cur_country_lon <- geocode %>% filter(name==country_name) %>% select(longitude) %>% pull()
+      print(cur_country_lat)
+      print(cur_country_lon)
+      zoom = 5
+    }
     leafletProxy("COVID19", data = filteredData()) %>%
       clearShapes() %>% clearMarkers() %>%
       addCircleMarkers(data=filteredData(),
@@ -184,7 +245,9 @@ server <- function(input, output, session) {
                        #stroke = ~plotColor,
                        stroke = FALSE,
                        fillOpacity = covid_alpha,
-                       color = ~plotColor)
+                       color = ~plotColor)  %>% setView(lng = cur_country_lon, 
+                                                        lat = cur_country_lat, 
+                                                        zoom = zoom)
   })
 }
 
