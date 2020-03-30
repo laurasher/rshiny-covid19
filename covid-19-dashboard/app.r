@@ -252,7 +252,7 @@ server <- function(input, output, session) {
                        stroke = FALSE,
                        fillOpacity = covid_alpha,
                        color = ~plotColor,
-                       label = ~lapply(as.list(caseCnt), HTML))  %>% 
+                       label = ~lapply(paste0("Total: ", as.list(caseCnt)), HTML))  %>% 
       setView(lng = cur_country_lon, lat = cur_country_lat, zoom = zoom)
   })
 }
