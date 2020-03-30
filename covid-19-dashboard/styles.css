@@ -49,6 +49,9 @@ th{
 .irs.js-irs-0.irs-with-grid{
   display: none;
 }
+.col-sm-4.col-sm-offset-3{
+  margin-left: 60px;
+}
 body, label, input, button, select {
   color:  black;
   /*background-color: #090909;*/
@@ -58,5 +61,17 @@ body, label, input, button, select {
   font-family: 'Helvetica Neue', Helvetica;
   font-weight: 200;
 }
-
+#COVID19{
+  margin-left: 2%;
+}
+.col-sm-4{
+  margin-left: 2%;
+}
 h1, h2, h3, h4 { font-weight: 400; }
+.container {
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    scrollbar-width: none;  /* Firefox */
+}
+.container::-webkit-scrollbar { 
+    display: none;  /* Safari and Chrome */
+}

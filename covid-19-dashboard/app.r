@@ -34,7 +34,8 @@ confirmed$type <- 'confirmed'
 confirmed$plotColor <- covid_col
 grouped_by_country <- confirmed %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
 grouped_by_country <- data.frame("Country"= grouped_by_country$`Country/Region`, "Confirmed" = grouped_by_country[ncol(grouped_by_country)] %>% pull())
-grouped_by_country[order(-grouped_by_country$Confirmed),]
+grouped_by_country[order(grouped_by_country$Country),]
+rownames(grouped_by_country) <- grouped_by_country$Country
 
 deaths <- as.data.frame(data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/archived_data/archived_time_series/time_series_19-covid-Deaths_archived_0325.csv"))
 grouped_by_country_deaths <- deaths %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
@@ -59,9 +60,8 @@ ui <- fluidPage(
            tags$head(tags$style(".leaflet-control-attribution { display: none; }")),
       column(2,
              span(p("Total Confirmed", align = "center"), style="font-size:20px;text-align:center;color:black"),
-             span(p(textOutput("reactive_case_count"), align = "center"), style="font-weight:500;font-size:36px;color:#e60000;text-align:center;"),
-             DT::dataTableOutput('table'),
-             #plotOutput("countPlot", height="430px", width="100%"),
+             span(p(textOutput("reactive_case_count"), align = "center"), style="font-weight:500;font-size:36px;color:#a20f0f;text-align:center;"),
+             dataTableOutput('table'),
              pickerInput("outcome_select", width="80%",
                          choices = c("Confirmed cases", "Deaths", "Recovered"), 
                          selected = c("Cases"),
@@ -70,8 +70,8 @@ ui <- fluidPage(
                          value = ncol(combined)[1]-(numHeadCols+numTailCols)-1, step = 1, width = "100%",
                          animate = animationOptions(interval = 700, loop = FALSE))
       ),
-      column(6,
-             leafletOutput("COVID19", height="750px")
+      column(5,
+             leafletOutput("COVID19", height="650px")
       ),
       fluidRow(
         column(4,
@@ -79,13 +79,13 @@ ui <- fluidPage(
                  span(p("Total Deaths", align = "center"), style="font-size:20px;text-align:center;color:black"),
                  span(p(textOutput("reactive_death_count"), align = "center"), style="font-weight:500;font-size:36px;text-align:center;color:black"),
                  tableOutput('deaths_table')),
-          column(4,offset = 2,
+          column(4,offset = 3,
                  span(p("Total Recovered", align = "center"), style="font-size:20px;text-align:center;color:black"),
                  span(p(textOutput("reactive_recovered_count"), align = "center"), style="font-weight:500;font-size:36px;text-align:center;color:#70a801"),
                  tableOutput('recovered_table'))
           ),
         column(4, span(p("Cumulative Global Confirmed Cases", align = "left", style="margin-left:15px;"), style="font-size:14px;text-align:center;color:black;margin-left:15px;"),
-               span(plotOutput("epiCurve", height="300px", width="450px"), style="margin-left:15px;"))
+               span(plotOutput("epiCurve", height="200px", width="450px"), style="margin-left:15px;"))
       )
 ))
 
@@ -153,23 +153,15 @@ server <- function(input, output, session) {
                               plot.background = element_blank()
       )}, bg="transparent")
   
-  output$table <- DT::renderDataTable(
-    DT::datatable(
+  output$table <- renderDataTable(
+    datatable(
       grouped_by_country,
       selection = 'single',
+      rownames=FALSE,
       options = list(
-        order = list(2, 'desc'),
         searching = FALSE,
         lengthChange = FALSE,
-        pageLength = 12),
-      callback = JS("
-            var format = function(d) {
-              console.log(d)
-            };
-            table.on('click', 'td.details-control', function() {
-             console.log()
-            });")
-  ))
+        pageLength = 12)))
   
   #output$table <- renderTable({
   #  grouped_by_country <- confirmed %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
@@ -198,13 +190,13 @@ server <- function(input, output, session) {
   output$deaths_table <- renderTable({
     grouped_by_country <- deaths %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
     grouped_by_country <- data.frame("Country"= grouped_by_country$`Country/Region`, "Deaths" = grouped_by_country[ncol(grouped_by_country)] %>% pull())
-    grouped_by_country[order(-grouped_by_country$Deaths),]
+    grouped_by_country[order(grouped_by_country$Country),]
   })
   
   output$recovered_table <- renderTable({
     grouped_by_country <- recovered %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
     grouped_by_country <- data.frame("Country"= grouped_by_country$`Country/Region`, "Recovered" = grouped_by_country[ncol(grouped_by_country)] %>% pull())
-    grouped_by_country[order(-grouped_by_country$Recovered),]
+    grouped_by_country[order(grouped_by_country$Country),]
   })
   
   #Reactive total case count
@@ -223,9 +215,7 @@ server <- function(input, output, session) {
   # reactive circles map
   observe({
     s = input$table_rows_selected
-    #print(s[1])
     tmp <- s[1]
-    print(tmp)
     if (is.null(tmp)){
       tmp = 1
       cur_country_lat = 0
