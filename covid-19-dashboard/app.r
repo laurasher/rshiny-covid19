@@ -16,11 +16,12 @@ library(rsconnect)
 if(!require(shinythemes)) install.packages("shinythemes", repos = "http://cran.us.r-project.org")
 if(!require(shinyWidgets)) install.packages("shinyWidgets", repos = "http://cran.us.r-project.org")
 library(DT) # if (!require("DT")) install.packages('DT')
+library(stringr)
 
 # Case data
 numHeadCols = 4
 numTailCols = 2
-covid_alpha = 0.7
+covid_alpha = 0.3
 deaths_col = "#cc4c02"
 #covid_col = "#D98D09"
 covid_col = "#a20f0f"
@@ -28,33 +29,52 @@ recovered_col = "#70a801"
 
 geocode <- read_csv('countries_csv.csv')
 
-confirmed <- as.data.frame(data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/archived_data/archived_time_series/time_series_19-covid-Confirmed_archived_0325.csv"))
-#confirmed <- confirmed[,1:ncol(confirmed)-1]
+confirmed <- as.data.frame(data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"))
+latest_date <- colnames(confirmed)[length(colnames(confirmed))]
+confirmed_timeseries <- confirmed
+confirmed <- confirmed %>% select("Province/State", "Country/Region", "Lat", "Long", colnames(confirmed)[length(colnames(confirmed))]) %>%
+  rename('latest_cases' = colnames(confirmed)[length(colnames(confirmed))]) %>% filter(`Country/Region`!='US')
+
+confirmed_US <- as.data.frame(data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"))
+confirmed_US <- confirmed_US %>% rename('Province/State' = 'Combined_Key') %>% 
+  rename('Country/Region' = 'Country_Region') %>% rename('Long' = 'Long_')  %>% 
+  select(-iso2, -iso3, -UID, -code3, -FIPS, -Admin2, -Province_State) %>%
+  filter(!is.na(Lat))
+#confirmed_US$Province_State <- str_replace(confirmed_US$Province_State, "US", "")
+confirmed_US <- confirmed_US %>% select("Province/State", "Country/Region", "Lat", "Long", colnames(confirmed_US)[length(colnames(confirmed_US))]) %>%
+  rename('latest_cases' = colnames(confirmed_US)[length(colnames(confirmed_US))])
+confirmed <- rbind(confirmed, confirmed_US)
+
 confirmed$type <- 'confirmed'
 confirmed$plotColor <- covid_col
+confirmed_timeseries$type <- 'confirmed'
+confirmed_timeseries$plotColor <- covid_col
 grouped_by_country <- confirmed %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
 grouped_by_country <- data.frame("Country"= grouped_by_country$`Country/Region`, "Confirmed" = grouped_by_country[ncol(grouped_by_country)] %>% pull())
 grouped_by_country[order(grouped_by_country$Country),]
 rownames(grouped_by_country) <- grouped_by_country$Country
 
-deaths <- as.data.frame(data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/archived_data/archived_time_series/time_series_19-covid-Deaths_archived_0325.csv"))
+deaths <- as.data.frame(data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"))
+deaths <- deaths %>% select("Province/State", "Country/Region", "Lat", "Long", colnames(deaths)[length(colnames(deaths))]) %>%
+  rename('latest_cases' = colnames(deaths)[length(colnames(deaths))])
 grouped_by_country_deaths <- deaths %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
 grouped_by_country_deaths <- data.frame("Country"= grouped_by_country_deaths$`Country/Region`, "Deaths" = grouped_by_country_deaths[ncol(grouped_by_country_deaths)] %>% pull())
 #deaths <- deaths[,1:ncol(deaths)-1]
 deaths$type <- 'deaths'
 deaths$plotColor <- deaths_col
 
-recovered <- as.data.frame(data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/archived_data/archived_time_series/time_series_19-covid-Recovered_archived_0325.csv"))
-#colnames(recovered) <- c("Province/State", "Country/Region", "Lat", "Long", "1/22/20", "1/23/20", "1/24/20", "1/25/20", "1/26/20", "1/27/20", "1/28/20", "1/29/20", "1/30/20", "1/31/20", "2/1/20", "2/2/20", "2/3/20", "2/4/20", "2/5/20", "2/6/20", "2/7/20", "2/8/20", "2/9/20", "2/10/20", "2/11/20", "2/12/20", "2/13/20", "2/14/20", "2/15/20", "2/16/20", "2/17/20", "2/18/20", "2/19/20", "2/20/20", "2/21/20", "2/22/20", "2/23/20", "2/24/20", "2/25/20", "2/26/20", "2/27/20", "2/28/20", "2/29/20", "3/1/20" ,"3/2/20", "3/3/20", "3/4/20", "3/5/20", "3/6/20", "3/7/20", "3/8/20", "3/9/20", "3/10/20", "3/11/20", "3/12/20", "3/13/20", "3/14/20", "3/15/20", "3/16/20", "3/17/20", "3/18/20", "3/19/20", "3/20/20", "3/21/20", "3/22/20", "3/23/20", "3/24/20")
+recovered <- as.data.frame(data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"))
+recovered <- recovered %>% select("Province/State", "Country/Region", "Lat", "Long", colnames(recovered)[length(colnames(recovered))]) %>%
+  rename('latest_cases' = colnames(recovered)[length(colnames(recovered))])
+grouped_by_country_recovered <- recovered %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
+grouped_by_country_recovered <- data.frame("Country"= grouped_by_country_recovered$`Country/Region`, "Recovered" = grouped_by_country_recovered[ncol(grouped_by_country_recovered)] %>% pull())
 recovered$type <- 'recovered'
 recovered$plotColor <- recovered_col
-combined <- rbind(confirmed, deaths, recovered)
-#combined <- rbind(confirmed, deaths, recovered)
 
-cases <- as.data.frame(data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/web-data/archived_data/data/cases.csv"))
+combined <- rbind(confirmed, deaths, recovered)
 
 ui <- fluidPage(
-  span(p("COVID-19 Tracker", align = "left", style="margin-bottom:2%"), style="font-weight:500;font-size:36px;text-align:center;color:black;"),
+  span(p(paste0("COVID-19 Tracker ", latest_date), align = "left"), style="margin-bottom:2%;font-weight:500;font-size:36px;text-align:center;color:black;"),
   fluidRow(tags$head(includeCSS("styles.css")),
            tags$head(tags$style(".leaflet-control-zoom { display: none; }")),
            tags$head(tags$style(".leaflet-control-attribution { display: none; }")),
@@ -95,6 +115,7 @@ server <- function(input, output, session) {
   filteredData <- reactive({
     x = data.frame(
       'country' = combined$`Country/Region`,
+      'province' = combined$`Province/State`,
       'lat' = combined$Lat,
       'long' = combined$Long,
       'caseCnt'= combined %>% select(colnames(combined)[input$day + numHeadCols]) %>% pull(),
@@ -112,6 +133,7 @@ server <- function(input, output, session) {
     }
     
     x <- x %>% filter(caseCnt > 0)
+    print(x)
   })
   
   #static background map
@@ -143,8 +165,8 @@ server <- function(input, output, session) {
   })
   
   output$epiCurve <- renderPlot({
-    ggplot(data = data.frame("date" = as.Date(colnames(confirmed[8:ncol(confirmed)-(numTailCols+1)]), format='%m/%d/%y'), 
-                             "y" = data.frame(colSums(confirmed[8:ncol(confirmed)-(numTailCols+1)])) %>% pull() ), aes(x=date, y=y)) + 
+    ggplot(data = data.frame("date" = as.Date(colnames(confirmed_timeseries[8:ncol(confirmed_timeseries)-(numTailCols+1)]), format='%m/%d/%y'), 
+                             "y" = data.frame(colSums(confirmed_timeseries[8:ncol(confirmed_timeseries)-(numTailCols+1)])) %>% pull() ), aes(x=date, y=y)) + 
       geom_line(colour="#ffaa00", size=1.0) +
       geom_point(colour="#ffaa00", size=3, shape=21, fill="#ffaa00") + labs(x = "", y = "") +
       theme_minimal() + theme(panel.grid.minor = element_blank(), 
@@ -163,30 +185,6 @@ server <- function(input, output, session) {
         lengthChange = FALSE,
         pageLength = 12)))
   
-  #output$table <- renderTable({
-  #  grouped_by_country <- confirmed %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
-  #  grouped_by_country <- data.frame("Country"= grouped_by_country$`Country/Region`, "Confirmed" = grouped_by_country[ncol(grouped_by_country)] %>% pull())
-  #  grouped_by_country[order(-grouped_by_country$Confirmed),]
-  #})
-  
-  #output$deaths_table <- DT::renderDataTable(
-  #  DT::datatable(
-  #    grouped_by_country_deaths,
-  #    options = list(
-  #      order = list(2, 'desc'),
-  #      searching = FALSE,
-  #      lengthChange = FALSE,
-  #      pageLength = 6,
-  #      columnDefs = list(list(width = '10px'))),
-  #    callback = JS("
-  #          var format = function(d) {
-  #            console.log(d)
-  #          };
-  #          table.on('click', 'td.details-control', function() {
-  #           console.log()
-  #          });")
-  #  ))
-  
   output$deaths_table <- renderTable({
     grouped_by_country <- deaths %>% group_by(`Country/Region`) %>% summarise_if(is.numeric, sum)
     grouped_by_country <- data.frame("Country"= grouped_by_country$`Country/Region`, "Deaths" = grouped_by_country[ncol(grouped_by_country)] %>% pull())
@@ -204,10 +202,10 @@ server <- function(input, output, session) {
     paste0(prettyNum(sum(combined %>% filter(type=='confirmed') %>% select(colnames(combined)[input$day + numHeadCols]) %>% pull()), big.mark=","))
   })
   output$reactive_death_count <- renderText({
-    paste0(prettyNum(sum(combined %>% filter(type=='deaths') %>% select(colnames(combined)[input$day + numHeadCols] ) %>% pull()), big.mark=","))
+    paste0(prettyNum(sum(grouped_by_country_deaths %>% select(Deaths) %>% pull()), big.mark=","))
   })
   output$reactive_recovered_count <- renderText({
-    paste0(prettyNum(sum(combined %>% filter(type=='recovered') %>% select(colnames(combined)[input$day + numHeadCols] ) %>% pull()), big.mark=","))
+    paste0(prettyNum(sum(grouped_by_country_recovered %>% select(Recovered) %>% pull()), big.mark=","))
   })
   output$reactive_date <- renderText({
     paste0(prettyNum(colnames(combined)[input$day + numHeadCols]))
@@ -223,8 +221,8 @@ server <- function(input, output, session) {
       zoom = 2.1
     } else {
       country_name <- grouped_by_country$Country[tmp]
-      cur_country_lat <- geocode %>% filter(name==country_name) %>% select(latitude) %>% pull()
-      cur_country_lon <- geocode %>% filter(name==country_name) %>% select(longitude) %>% pull()
+      cur_country_lat <- geocode %>% filter(name==country_name | country==country_name) %>% select(latitude) %>% pull()
+      cur_country_lon <- geocode %>% filter(name==country_name | country==country_name) %>% select(longitude) %>% pull()
       print(cur_country_lat)
       print(cur_country_lon)
       zoom = 5
@@ -242,7 +240,7 @@ server <- function(input, output, session) {
                        stroke = FALSE,
                        fillOpacity = covid_alpha,
                        color = ~plotColor,
-                       label = ~lapply(paste0("Total: ", as.list(caseCnt)), HTML))  %>% 
+                       label = ~lapply(paste0(province, " ", country, ": ", as.list(caseCnt)), HTML))  %>% 
       setView(lng = cur_country_lon, lat = cur_country_lat, zoom = zoom)
   })
 }
